@@ -152,7 +152,7 @@ def count_traded_minutes(current_time):
 # 交易日位移
 def trade_date_offset(date, n, cal_ls=tushare_cal_ls):
     if date not in cal_ls:
-        date = get_pretrade_date(target_date=date)
+        date = get_pretrade_date(origin_date=date)
     current_index = cal_ls.index(date)
     new_index = current_index + n
     return cal_ls[new_index]
@@ -190,3 +190,21 @@ def get_yj_period(date):
     elif short_date <= '1101':
         yj_peridos = [year + '1231']
     return yj_peridos
+
+
+# 获取两个日期之间的日期list
+def get_days_between(start_date, end_date, end_included='n'):
+    date_list = []
+    start = datetime.datetime.strptime(start_date, "%Y%m%d")
+    end = datetime.datetime.strptime(end_date, "%Y%m%d")
+    delta = datetime.timedelta(days=1)
+    if end_included != 'n':
+        while start <= end:
+            date_list.append(start.strftime("%Y%m%d"))
+            start += delta
+    else:
+        start += delta
+        while start < end:
+            date_list.append(start.strftime("%Y%m%d"))
+            start += delta
+    return date_list

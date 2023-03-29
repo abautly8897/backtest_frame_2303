@@ -1,9 +1,15 @@
 import datetime
+
 import akshare as ak
-import security_basic_info
-import requests
-import trade_cal_handle
 import pandas as pd
+import requests
+import tushare as ts
+
+import security_basic_info
+import trade_cal_handle
+
+ts.set_token('e9628663b45f87ea92e39aaa7127063830ebd5090bc1e8943138b84f')
+pro = ts.pro_api()
 
 
 # 检查是否ST
@@ -21,8 +27,8 @@ def ST_check(sec_ls):
 
 # 检查是否停牌，通过AKShare 相关接口判断是否停牌
 # ak.stock_tfp_em()
-def pause_check(sec_ls):
-    stock_tfp_em_df = ak.stock_tfp_em()
+def pause_check(sec_ls, date):
+    stock_tfp_em_df = ak.stock_tfp_em(date)
     current_pause_ls = stock_tfp_em_df['代码'].tolist()
     not_pause_ls = []
     for sec in sec_ls:
@@ -133,7 +139,6 @@ def real_time_quotation_check(tick):
 # 获取指定日期一组证券（list）前推n天的行情信息
 def target_stock_daily_hist(stocks, n=2,
                             date=datetime.date.today().strftime("%Y%m%d")):  # date默认今天的日期，行情天数默认为2天，即为T-1和T-2日的行情
-
     # 指定日期
     today_string = date
     end_date = trade_cal_handle.get_pretrade_date(today_string)  # 日期格式为YYYYMMDD
@@ -141,13 +146,22 @@ def target_stock_daily_hist(stocks, n=2,
     total_trade_cal_str = [dt.strftime('%Y%m%d') for dt in total_trade_cal]
     end_date_index = total_trade_cal_str.index(end_date)
     start_date = total_trade_cal_str[0:end_date_index][-(n - 1)]
-
     # 获取多只证券在指定日期的行情数据
     stock_data = pd.DataFrame()
     for stock in stocks:
         data = ak.stock_zh_a_hist(symbol=stock, period="daily", start_date=start_date, end_date=end_date, adjust="")
-        data['secCode'] = [stock] * data.shape[0]
-        data['name'] = [security_basic_info.target_name_transform(stock)] * data.shape[0]
-        stock_data = stock_data.append(data)
-        stock_data = stock_data.reset_index(drop=True)
+        if data.shape[0] == n:
+            data['secCode'] = [stock] * data.shape[0]
+            data['name'] = [security_basic_info.target_name_transform(stock)] * data.shape[0]
+            stock_data = pd.concat([stock_data, data], ignore_index=True)
+    stock_data = stock_data.reset_index(drop=True)
     return stock_data
+
+
+# 获取至指日期证券的中间价
+def get_target_sec_price_data(date, sec_list):
+    data = pro.daily(start_date=date, end_date=date)
+    data['ts_code'] = [x[:6] for x in data.ts_code.tolist()]
+    data = data.loc[data['ts_code'].isin(sec_list)]
+    middle_price = [(x + y / 2) for x, y in zip(data.close.tolist(), data.open.tolist())]
+    return dict(zip(data.ts_code.tolist(), middle_price))
