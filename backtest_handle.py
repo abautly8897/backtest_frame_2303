@@ -24,11 +24,12 @@ def initiating(backtest_info):
 # 获取上一个交易日的持仓情况
 def prepare_current_asset_holding_info(date, asset_df, holding_df):
     pre_date = trade_cal_handle.get_pretrade_date(date)
-    # current_holding_df = holding_df.loc[holding_df['date'] == pre_date, :]
-    current_holding_df = holding_df.query('date == ' + pre_date)
+    current_holding_df = holding_df.loc[holding_df['date'] == pre_date, :]
+    # current_holding_df = holding_df.query('date == ' + pre_date)
     current_holding_df.loc[:, 'date'] = [date] * current_holding_df.shape[0]
     asset_df = asset_df.append(asset_df.iloc[-1], ignore_index=True)
     asset_df.iloc[-1, 0] = date
+    print('current_holding_df', current_holding_df)
     return asset_df, current_holding_df
 
 

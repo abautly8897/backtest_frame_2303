@@ -71,7 +71,7 @@ for i in range(len(backtest_cal)):
     holding_df = pd.concat([holding_df, current_holding_df], ignore_index=True)
     asset_df = backtest_handle.renew_asset_df(date=current_date, asset_df=asset_df,
                                               current_holding_df=current_holding_df)
-    print(holding_df)
+    print(current_holding_df)
     print(asset_df.iloc[-1])
     # backtest_handle.handle_after_trade()
 
