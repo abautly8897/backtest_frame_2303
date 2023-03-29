@@ -30,7 +30,7 @@ asset_df, holding_df, exec_df = backtest_handle.initiating(backtest_setting)
 backtest_cal = [x for x in all_trade_cal if end_date >= x >= start_date]
 
 # ======执行回测======
-i = 50
+i = 0
 for i in range(len(backtest_cal)):
     current_date = backtest_cal[i]
     print('【{}】'.format(current_date))
@@ -68,7 +68,11 @@ for i in range(len(backtest_cal)):
                                                                                          asset_df=asset_df,
                                                                                          exec_price_type='n')
         exec_df = pd.concat([exec_df, buy_exec_df], ignore_index=True)
-
+    holding_df = pd.concat([holding_df, current_holding_df], ignore_index=True)
+    asset_df = backtest_handle.renew_asset_df(date=current_date, asset_df=asset_df,
+                                              current_holding_df=current_holding_df)
+    print(holding_df)
+    print(asset_df.iloc[-1])
     # backtest_handle.handle_after_trade()
 
     # ======回测处理======

@@ -24,22 +24,14 @@ def initiating(backtest_info):
 # 获取上一个交易日的持仓情况
 def prepare_current_asset_holding_info(date, asset_df, holding_df):
     pre_date = trade_cal_handle.get_pretrade_date(date)
-    holding_df = holding_df.loc[holding_df['date'] == pre_date]
-    holding_df['date'] = date
+    # current_holding_df = holding_df.loc[holding_df['date'] == pre_date, :]
+    current_holding_df = holding_df.query('date == ' + pre_date)
+    current_holding_df.loc[:, 'date'] = [date] * current_holding_df.shape[0]
     asset_df = asset_df.append(asset_df.iloc[-1], ignore_index=True)
     asset_df.iloc[-1, 0] = date
-    return asset_df, holding_df
+    return asset_df, current_holding_df
 
 
-def handle_after_backtest(fold_name):
-    # 要移动的文件的完整路径
-    source_file = 'file.txt'
-
-    # 目标文件夹的完整路径
-    target_folder = '/' + fold_name
-
-    # 使用 move() 函数将文件移动到目标文件夹
-    shutil.move(source_file, target_folder)
 
 
 # 执行卖出操作
@@ -67,7 +59,7 @@ def asset_holding_info_handle(date, asset_df, current_holding_df, sell_exec_df, 
     target_sec_price_data = market_quotation.get_target_sec_price_data(date, holding_sec)
     for sec in holding_sec:
         holding_value += new_current_holding_df[new_current_holding_df['code'] == sec, 'holding_num'].iloc[0] * \
-                         target_sec_price_data['code']
+                         target_sec_price_data[sec]
     new_asset_row = {'date': date, 'security': holding_value, 'cash': cash_after_sell,
                      'total': holding_value + cash_after_sell}
     asset_df.iloc[-1] = new_asset_row
@@ -78,7 +70,7 @@ def asset_holding_info_handle(date, asset_df, current_holding_df, sell_exec_df, 
 def buy_transaction_exec(date, to_buy_list, current_holding_df, asset_df, exec_price_type='n'):
     buy_exec_df = pd.DataFrame(columns=['date', 'code', 'price', 'num', 'transaction_dir'])
     available_cash = asset_df.iloc[-1, 2]
-    single_buy_value = available_cash / len(to_buy_list)
+    single_buy_value = min(available_cash / len(to_buy_list), available_cash / 15)
     target_sec_price_data = market_quotation.get_target_sec_price_data(date, to_buy_list)
     cash_change = 0
     for sec in to_buy_list:
@@ -96,9 +88,35 @@ def buy_transaction_exec(date, to_buy_list, current_holding_df, asset_df, exec_p
     holding_sec = current_holding_df.code.tolist()
     target_sec_price_data = market_quotation.get_target_sec_price_data(date, holding_sec)
     for sec in holding_sec:
-        holding_value += current_holding_df[current_holding_df['code'] == sec, 'holding_num'].iloc[0] * \
-                         target_sec_price_data['code']
+        holding_value += current_holding_df.loc[current_holding_df['code'] == sec, 'holding_num'].iloc[0] * \
+                         target_sec_price_data[sec]
     new_asset_row = {'date': date, 'security': holding_value, 'cash': cash_after_buy,
                      'total': holding_value + cash_after_buy}
     asset_df.iloc[-1] = new_asset_row
     return asset_df, current_holding_df, buy_exec_df
+
+
+# 根据holding信息更新asset_df
+def renew_asset_df(date, asset_df, current_holding_df):
+    holding_value = 0
+    available_cash = asset_df.iloc[-1, 2]
+    holding_sec = current_holding_df.code.tolist()
+    target_sec_price_data = market_quotation.get_target_sec_price_data(date, holding_sec)
+    for sec in holding_sec:
+        holding_value += current_holding_df.loc[current_holding_df['code'] == sec, 'holding_num'].iloc[0] * \
+                         target_sec_price_data[sec]
+    new_asset_row = {'date': date, 'security': holding_value, 'cash': available_cash,
+                     'total': holding_value + available_cash}
+    asset_df.iloc[-1] = new_asset_row
+    return asset_df
+
+
+def handle_after_backtest(fold_name):
+    # 要移动的文件的完整路径
+    source_file = 'file.txt'
+
+    # 目标文件夹的完整路径
+    target_folder = '/' + fold_name
+
+    # 使用 move() 函数将文件移动到目标文件夹
+    shutil.move(source_file, target_folder)
