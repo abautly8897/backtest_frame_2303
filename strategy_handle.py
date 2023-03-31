@@ -16,8 +16,25 @@ import trade_cal_handle
 
 
 # 获取当天应卖出的证券
-def get_sell_list(holding_df):
-    target_sec_df = holding_df.loc[holding_df['holding_days'] > 40]
+def get_sell_list(holding_df, to_buy_list):
+    current_holding_sec = holding_df.code.tolist()
+    if current_holding_sec == []:
+        current_holding_num = 0
+    else:
+        current_holding_num = len(current_holding_sec)
+    security_list = holding_df.loc[holding_df['holding_days'] > 80].code.tolist()
+    new_holding = holding_df.loc[~holding_df['code'].isin(security_list)].copy()
+
+    # print(security_list, to_buy_list)
+    if security_list != []:
+        extra_sell_num = len(security_list) + len(to_buy_list) + current_holding_num - 20
+    else:
+        extra_sell_num = len(to_buy_list) + current_holding_num- 20
+    # print(extra_sell_num)
+    if extra_sell_num > 0:
+        extra_sell = new_holding.code.tolist()[-extra_sell_num:]
+        security_list = list(set(security_list) | set(extra_sell))
+    target_sec_df = holding_df.loc[holding_df['code'].isin(security_list)]
     security_list = target_sec_df.code.tolist()
     to_sell_num_list = target_sec_df.holding_num.tolist()
     return dict(zip(security_list, to_sell_num_list))
@@ -145,6 +162,7 @@ def Tday_check(list, date):
     df = pro.daily(start_date=date, end_date=date)
     df['ts_code'] = [x[:6] for x in df.ts_code.tolist()]
     result_ls = []
+    new_ls = [x for x in new_ls if x in df.ts_code.tolist()]  # 过滤未取得数据的证券
     for sec in new_ls:
         tick = dict(zip(df.columns.tolist(), df.loc[df['ts_code'] == sec].iloc[0]))  # 获取实时价格
         if tick['open'] < tick['pre_close'] * 1.098:  # 检查是否涨停
@@ -154,7 +172,14 @@ def Tday_check(list, date):
                 print('证券【{}】因低开或高开过多排除。'.format(security_basic_info.target_name_transform(sec) + sec))
         else:
             print('证券【{}】因涨停排除。'.format(security_basic_info.target_name_transform(sec) + sec))
-        # buy_plan_message = '根据备选证券盘初行情判定买入证券：{}'.format([security_basic_info.target_name_transform(x) + x for x in result_ls])
-        # send_email.send_msg_with_mail('今日买入计划', buy_plan_message)
-        # print(buy_plan_message)
-        return result_ls
+    # buy_plan_message = '根据备选证券盘初行情判定买入证券：{}'.format([security_basic_info.target_name_transform(x) + x for x in result_ls])
+    # send_email.send_msg_with_mail('今日买入计划', buy_plan_message)
+    # print(buy_plan_message)
+    return result_ls
+
+
+# 已持仓证券不在买入
+def buy_list_handle(to_buy_list, current_holding_df):
+    holding_sec = current_holding_df.code.tolist()
+    to_buy_list = [x for x in to_buy_list if x not in holding_sec]
+    return to_buy_list

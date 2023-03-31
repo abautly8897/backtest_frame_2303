@@ -75,6 +75,15 @@ def date_delta(date1, date2):
     return delta.days
 
 
+def str_trade_date_delta(date1, date2, trade_cal_ls=tushare_cal_ls):
+    if date2 in trade_cal_ls:  # 若今天不是交易日
+        current_index = trade_cal_ls.index(date2)
+    else:
+        current_index = trade_cal_ls.index(get_pretrade_date(date2))
+    previous_index = trade_cal_ls.index(date1)
+    return current_index - previous_index
+
+
 def is_today_trading_day():
     now = datetime.datetime.now()
     today = datetime.date.today()

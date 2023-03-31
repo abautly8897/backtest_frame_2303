@@ -160,8 +160,18 @@ def target_stock_daily_hist(stocks, n=2,
 
 # 获取至指日期证券的中间价
 def get_target_sec_price_data(date, sec_list):
-    data = pro.daily(start_date=date, end_date=date)
-    data['ts_code'] = [x[:6] for x in data.ts_code.tolist()]
+    data = ak.stock_zh_a_hist(symbol='000001', adjust='qfq', start_date=date, end_date=date)
+    data['ts_code'] = ['000001']
+    for sec in sec_list:
+        # sec = ('sz' + sec) if sec[0] in ['0', '3'] else ('sh' + sec)
+        new_data = ak.stock_zh_a_hist(symbol=sec, adjust='qfq', start_date=date, end_date=date)
+        if new_data.empty != True:
+            # new_data['ts_code'] = [sec[-6:]]
+            new_data['ts_code'] = [sec]
+            data = data.append(new_data)
+    # data = pro.daily(start_date=date, end_date=date)
     data = data.loc[data['ts_code'].isin(sec_list)]
-    middle_price = [(x + y / 2) for x, y in zip(data.close.tolist(), data.open.tolist())]
+    close = data['收盘'].tolist()
+    open = data['开盘'].tolist()
+    middle_price = [round((close[i] + open[i]) / 2, 2) for i in range(len(open))]
     return dict(zip(data.ts_code.tolist(), middle_price))
